@@ -35,7 +35,6 @@ const progressBarFill = document.querySelector(".progressBarFill");
 const currentTimeDisplay = document.getElementById("currentTime");
 const durationDisplay = document.getElementById("duration");
 
-// Adicionar constantes para o botão de playlist
 const addToPlaylistBtn = document.getElementById("addToPlaylistBtn");
 const playlistDropdown = document.getElementById("playlistDropdown");
 const playlistDropdownItems = document.getElementById("playlistDropdownItems");
@@ -51,6 +50,7 @@ let audioElement = null;
 let ytPlayer = null;
 let isYoutubeVideo = false;
 let youtubeContainer = null;
+let youtubeAPIReady = false;
 
 function createYoutubeContainer() {
   if (!youtubeContainer) {
@@ -63,34 +63,49 @@ function createYoutubeContainer() {
     youtubeContainer.style.width = '100%';
     youtubeContainer.style.height = '100%';
     document.getElementById('playerContainer').appendChild(youtubeContainer);
-    
-    // Carregar API do YouTube
+
     const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.src = 'https://www.youtube.com/iframe_api'; 
     const firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
   }
 }
 
-// Função chamada automaticamente quando a API do YouTube carrega
 window.onYouTubeIframeAPIReady = function() {
   console.log('YouTube API ready');
+  youtubeAPIReady = true;
 };
 
-const musicas = {
-  "Five Finger Death Punch": "assets/audio/Five Finger Death Punch - Wrong Side Of Heaven.mp3",
-  "Before I Forget": "assets/audio/Slipknot - Before I Forget [OFFICIAL VIDEO] [HD].mp3",
-  "wind of change": "assets/audio/Scorpions - Wind Of Change (Official Music Video).mp3",
-  "aerials": "assets/audio/System Of A Down - Aerials (Official HD Video).mp3",
-  "toxicity": "assets/audio/System Of A Down - Toxicity (Official HD Video).mp3",
-};
+async function searchMusic(query) {
+  try {
+    const apiKey = 'AIzaSyBaSnmFK5KdN-BxVrcBHjqFdFRq5q4mm0w';
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&key=${apiKey}`);
+    const data = await response.json();
+
+    if (data.error) {
+        console.error('Erro da API do YouTube:', data.error.message);
+        showErrorMessage(`Erro da API: ${data.error.message}. Verifique sua chave ou limites de uso.`, true);
+        return [];
+    }
+
+    return data.items.map(item => ({
+      title: item.snippet.title,
+      videoId: item.id.videoId,
+      thumbnail: item.snippet.thumbnails.default.url
+    }));
+  } catch (error) {
+    console.error('Erro ao buscar músicas:', error);
+    showErrorMessage('Erro ao buscar músicas. Verifique sua conexão ou a chave da API.', true);
+    return [];
+  }
+}
 
 function showErrorMessage(message, isError = true) {
   if (!errorMessage) return;
-  
+
   errorMessage.textContent = message;
   errorMessage.classList.add("show");
-  
+
   if (isError) {
     errorMessage.classList.add("error");
     errorMessage.classList.remove("success");
@@ -98,148 +113,115 @@ function showErrorMessage(message, isError = true) {
     errorMessage.classList.add("success");
     errorMessage.classList.remove("error");
   }
-  
+
   setTimeout(() => {
     errorMessage.classList.remove("show");
   }, 3000);
 }
 
-function tocarMusica(nome) {
-  if (!nome) {
-    return;
-  }
-  
-  const url = musicas[nome];
-  if (!url) {
-    mostrarMusicasDisponiveis();
+async function showAvailableSongsFromSearch() {
+  const searchQuery = musicSearchInput.value.trim();
+  if (!searchQuery) {
+    showPlayerMessage("Digite algo para buscar", true);
     return;
   }
 
-  // Verificar se é um vídeo do YouTube
-  if (url.startsWith('youtube:')) {
-    const videoId = url.split(':')[1];
-    tocarYouTubeVideo(videoId, nome);
-    return;
-  }
-
-  // Se não for YouTube, limpar player anterior se existir
-  if (ytPlayer) {
-    ytPlayer.destroy();
-    ytPlayer = null;
-    if (youtubeContainer) {
-      youtubeContainer.style.display = 'none';
-    }
-  }
-  
-  isYoutubeVideo = false;
+  availableSongsList.innerHTML = '<div class="loading">Buscando músicas...</div>';
+  availableSongsList.classList.add('show');
+  songListContainer.innerHTML = '';
 
   try {
-    stopPlayerInterval();
-    
-    if (audioElement) {
-      audioElement.pause();
-      audioElement.currentTime = 0;
+    const songs = await searchMusic(searchQuery);
+
+    if (songs.length === 0) {
+      availableSongsList.innerHTML = '<p class="instruction-text">Nenhuma música encontrada</p>';
+      return;
     }
-    
-    audioElement = new Audio();
-    
-    audioElement.addEventListener('loadedmetadata', () => {
-      const duration = audioElement.duration;
-      durationDisplay.textContent = formatTime(duration);
+
+    const searchResultsContainer = document.createElement('div');
+    searchResultsContainer.innerHTML = `
+      <h3>Resultados da busca</h3>
+      <p class="instruction-text">Clique em uma música para reproduzir ou adicione a uma playlist</p>
+    `;
+    const songListDiv = document.createElement('div');
+    songListDiv.className = 'song-list';
+
+    songs.forEach(song => {
+      const songItem = document.createElement('div');
+      songItem.className = 'song-item';
+      songItem.dataset.videoId = song.videoId;
+      songItem.dataset.title = song.title;
+
+      songItem.innerHTML = `
+        <img src="${song.thumbnail}" alt="${song.title}" style="width: 120px; height: 90px; object-fit: cover; margin-bottom: 8px;">
+        <div>${song.title}</div>
+      `;
+
+      songItem.addEventListener('click', () => {
+        tocarMusica({ name: song.title, videoId: song.videoId });
+      });
+
+      songItem.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        currentSong = { name: song.title, videoId: song.videoId };
+        addToPlaylistBtn.style.display = "flex";
+        playlistDropdown.classList.add('show');
+        updatePlaylistDropdown();
+      });
+
+      songListDiv.appendChild(songItem);
     });
-    
-    audioElement.addEventListener('timeupdate', () => {
-      updateProgress();
-    });
-    
-    audioElement.addEventListener('ended', onSongEnd);
-    
-    audioElement.addEventListener('error', (e) => {
-      console.error('Erro ao carregar áudio:', e);
-    });
-    
-    audioElement.volume = volumeSlider.value / 100;
-    
-    audioElement.src = url;
-    
-    const playPromise = audioElement.play();
-    
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          isPlaying = true;
-          updatePlayPauseButton();
-          currentSong = nome;
-          currentSongTitle.textContent = nome;
-          
-          // Mostrar botão quando houver música tocando
-          addToPlaylistBtn.style.display = "flex";
-          
-          // Usar o evento timeupdate para atualizações suaves
-          // e um intervalo de backup para garantir atualizações frequentes
-          playerInterval = setInterval(() => {
-            if (!audioElement.paused) {
-              updateProgress();
-            }
-          }, 50);
-          
-          document.querySelectorAll('.song-item').forEach(item => {
-            item.classList.remove('playing');
-            if (item.textContent === nome) {
-              item.classList.add('playing');
-            }
-          });
-        })
-        .catch(error => {
-          console.error('Erro ao iniciar reprodução:', error);
-          isPlaying = false;
-          updatePlayPauseButton();
-        });
-    }
-    
+
+    searchResultsContainer.appendChild(songListDiv);
+    availableSongsList.innerHTML = '';
+    availableSongsList.appendChild(searchResultsContainer);
+
   } catch (error) {
-    console.error('Erro ao tocar música:', error);
+    console.error('Erro ao mostrar músicas:', error);
+    availableSongsList.innerHTML = '<p class="instruction-text">Erro ao buscar músicas</p>';
   }
 }
 
-function tocarYouTubeVideo(videoId, nome) {
-  createYoutubeContainer();
-  
+function tocarMusica(songDetails) {
+  if (!songDetails || !songDetails.videoId || !songDetails.name) {
+    showErrorMessage('Detalhes da música incompletos para reprodução.');
+    return;
+  }
+
   if (audioElement) {
     audioElement.pause();
     audioElement.currentTime = 0;
   }
-  
+
   isYoutubeVideo = true;
   isPlaying = true;
-  currentSong = nome;
-  currentSongTitle.textContent = nome;
-  
-  // Mostrar botão quando houver música tocando
+  currentSong = songDetails;
+  currentSongTitle.textContent = songDetails.name;
+
   addToPlaylistBtn.style.display = "flex";
-  
-  // Atualizar interface visual
+
   document.querySelectorAll('.song-item').forEach(item => {
     item.classList.remove('playing');
-    if (item.textContent === nome) {
+    if (item.dataset.videoId === songDetails.videoId) {
       item.classList.add('playing');
     }
   });
-  
+
   updatePlayPauseButton();
-  
-  // Se a API do YouTube já estiver carregada
-  if (window.YT && window.YT.Player) {
+
+  createYoutubeContainer();
+
+  if (youtubeAPIReady && window.YT && window.YT.Player) {
     if (ytPlayer) {
       ytPlayer.destroy();
     }
-    
+
     youtubeContainer.style.display = 'block';
-    
+
     ytPlayer = new YT.Player('youtubePlayer', {
       height: '100%',
       width: '100%',
-      videoId: videoId,
+      videoId: songDetails.videoId,
       playerVars: {
         'autoplay': 1,
         'controls': 0,
@@ -252,29 +234,33 @@ function tocarYouTubeVideo(videoId, nome) {
       }
     });
   } else {
-    // Se a API ainda não carregou, aguardar e tentar novamente
-    showErrorMessage('Carregando player do YouTube...');
-    setTimeout(() => {
-      tocarYouTubeVideo(videoId, nome);
-    }, 1000);
+    showErrorMessage('Carregando player do YouTube... Tente novamente em instantes.');
   }
 }
 
 function onYoutubePlayerReady(event) {
   event.target.playVideo();
   ytPlayer.setVolume(volumeSlider.value);
-  
-  // Iniciar atualização do tempo
+
+  stopPlayerInterval();
   playerInterval = setInterval(() => {
     if (ytPlayer && ytPlayer.getCurrentTime) {
       const currentTime = ytPlayer.getCurrentTime();
       const duration = ytPlayer.getDuration();
+
+      if (isNaN(duration) || duration <= 0) {
+        progressBarFill.style.width = "0%";
+        currentTimeDisplay.textContent = "0:00";
+        durationDisplay.textContent = "0:00";
+        return;
+      }
+
       const percent = (currentTime / duration) * 100;
-      
+
       progressBarFill.style.width = percent + "%";
       currentTimeDisplay.textContent = formatTime(currentTime);
       durationDisplay.textContent = formatTime(duration);
-      
+
       if (currentTime >= duration - 0.5) {
         onSongEnd();
       }
@@ -283,25 +269,34 @@ function onYoutubePlayerReady(event) {
 }
 
 function onYoutubePlayerStateChange(event) {
-  // Estado 0 = vídeo terminou
-  if (event.data === 0) {
+  if (event.data === YT.PlayerState.ENDED) {
     onSongEnd();
+  }
+  if (event.data === YT.PlayerState.PAUSED) {
+    isPlaying = false;
+    updatePlayPauseButton();
+    stopPlayerInterval();
+  }
+  if (event.data === YT.PlayerState.PLAYING) {
+    isPlaying = true;
+    updatePlayPauseButton();
+    if (!playerInterval) {
+      onYoutubePlayerReady({ target: ytPlayer });
+    }
   }
 }
 
 function updateProgress() {
   if (!audioElement || audioElement.readyState < 2) return;
-  
+
   try {
     const currentTime = audioElement.currentTime || 0;
     const duration = audioElement.duration || 0;
-    
+
     if (isNaN(duration) || duration === 0) return;
-    
-    // Calculando porcentagem com precisão
+
     const percent = Math.min(100, Math.max(0, (currentTime / duration) * 100));
-    
-    // Atualizar a largura da barra de progresso diretamente
+
     requestAnimationFrame(() => {
       progressBarFill.style.width = percent + "%";
       currentTimeDisplay.textContent = formatTime(currentTime);
@@ -318,14 +313,14 @@ function formatTime(seconds) {
 }
 
 function getDurationInSeconds() {
-  if (isYoutubeVideo && ytPlayer) {
+  if (isYoutubeVideo && ytPlayer && ytPlayer.getDuration) {
     return ytPlayer.getDuration();
   }
-  
+
   if (audioElement && !isNaN(audioElement.duration)) {
     return audioElement.duration;
   }
-  
+
   const timeText = durationDisplay.textContent;
   const [minutes, seconds] = timeText.split(':').map(Number);
   return minutes * 60 + seconds;
@@ -353,7 +348,7 @@ function preserveProgressState() {
     const currentTime = audioElement.currentTime;
     const duration = audioElement.duration;
     const percent = (currentTime / duration) * 100;
-    
+
     progressBarFill.style.width = percent + "%";
     currentTimeDisplay.textContent = formatTime(currentTime);
   }
@@ -361,30 +356,24 @@ function preserveProgressState() {
 
 function resetPlayer() {
   stopPlayerInterval();
-  
+
   if (audioElement) {
     audioElement.pause();
     audioElement.currentTime = 0;
-    
-    // Limpar referências para evitar memory leaks
-    audioElement.onloadedmetadata = null;
-    audioElement.ontimeupdate = null;
-    audioElement.onended = null;
-    audioElement.onerror = null;
     audioElement.src = "";
   }
-  
+
   if (ytPlayer) {
     ytPlayer.stopVideo();
   }
-  
+
   isPlaying = false;
   updatePlayPauseButton();
   progressBarFill.style.width = "0%";
   currentTimeDisplay.textContent = "0:00";
+  durationDisplay.textContent = "0:00";
   currentSongTitle.textContent = "Selecione uma música";
-  
-  // Ocultar botão quando não houver música
+  currentSong = null;
   addToPlaylistBtn.style.display = "none";
 }
 
@@ -395,81 +384,66 @@ function updatePlayPauseButton() {
 
 function playNextSong() {
   if (currentPlaylist.length === 0) {
+    showPlayerMessage("A playlist está vazia.", true);
+    resetPlayer();
     return;
   }
-  
+
   if (isShuffle) {
     currentPlaylistIndex = Math.floor(Math.random() * currentPlaylist.length);
   } else {
     currentPlaylistIndex = (currentPlaylistIndex + 1) % currentPlaylist.length;
   }
-  
+
   tocarMusica(currentPlaylist[currentPlaylistIndex]);
 }
 
 function playPrevSong() {
   if (currentPlaylist.length === 0) {
+    showPlayerMessage("A playlist está vazia.", true);
+    resetPlayer();
     return;
   }
-  
+
   if (isShuffle) {
     currentPlaylistIndex = Math.floor(Math.random() * currentPlaylist.length);
   } else {
     currentPlaylistIndex = (currentPlaylistIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
   }
-  
+
   tocarMusica(currentPlaylist[currentPlaylistIndex]);
 }
 
 playPauseBtn.addEventListener('click', () => {
-  if (!isPlaying) {
-    if (currentSong) {
-      if (isYoutubeVideo && ytPlayer) {
-        ytPlayer.playVideo();
-        isPlaying = true;
-        updatePlayPauseButton();
-      } else if (audioElement) {
-        const playPromise = audioElement.play();
-        
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              isPlaying = true;
-              updatePlayPauseButton();
-              
-              // Garantir que o intervalo de atualização esteja funcionando
-              if (!playerInterval) {
-                playerInterval = setInterval(() => {
-                  updateProgress();
-                }, 100);
-              }
-            })
-            .catch(error => {
-              console.error('Erro ao retomar reprodução:', error);
-              showErrorMessage('Erro ao reproduzir a música. Tente novamente.');
-            });
-        }
-      } else if (currentPlaylist.length > 0) {
-        const musicNames = Object.keys(musicas);
-        const randomIndex = Math.floor(Math.random() * musicNames.length);
-        tocarMusica(musicNames[randomIndex]);
-      }
-    } else if (currentPlaylist.length > 0) {
-      const musicNames = Object.keys(musicas);
-      const randomIndex = Math.floor(Math.random() * musicNames.length);
-      tocarMusica(musicNames[randomIndex]);
+  if (!currentSong) {
+    if (currentPlaylist.length > 0) {
+      currentPlaylistIndex = 0;
+      tocarMusica(currentPlaylist[currentPlaylistIndex]);
+    } else {
+      showPlayerMessage("Nenhuma música selecionada. Busque por uma música primeiro.", true);
     }
+    return;
+  }
+
+  if (!isPlaying) {
+    if (isYoutubeVideo && ytPlayer) {
+      ytPlayer.playVideo();
+    } else if (audioElement) {
+      const playPromise = audioElement.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('Erro ao retomar reprodução:', error);
+          showErrorMessage('Erro ao reproduzir a música. Tente novamente.');
+        });
+      }
+    }
+    isPlaying = true;
+    updatePlayPauseButton();
   } else {
     if (isYoutubeVideo && ytPlayer) {
       ytPlayer.pauseVideo();
     } else if (audioElement) {
       audioElement.pause();
-      
-      // Preservar o estado da barra de progresso quando pausado
-      preserveProgressState();
-      
-      // Parar o intervalo de atualização quando pausado
-      stopPlayerInterval();
     }
     isPlaying = false;
     updatePlayPauseButton();
@@ -477,46 +451,47 @@ playPauseBtn.addEventListener('click', () => {
 });
 
 nextBtn.addEventListener('click', playNextSong);
-
 prevBtn.addEventListener('click', playPrevSong);
 
 shuffleBtn.addEventListener('click', () => {
   isShuffle = !isShuffle;
   shuffleBtn.style.color = isShuffle ? "#1DB954" : "#aaa";
+  showPlayerMessage(`Modo aleatório: ${isShuffle ? 'ATIVADO' : 'DESATIVADO'}`, false);
 });
 
 repeatBtn.addEventListener('click', () => {
   isRepeat = !isRepeat;
   repeatBtn.style.color = isRepeat ? "#1DB954" : "#aaa";
+  showPlayerMessage(`Repetir: ${isRepeat ? 'ATIVADO' : 'DESATIVADO'}`, false);
 });
 
 volumeSlider.addEventListener('input', (e) => {
   const volume = e.target.value;
   e.target.style.background = `linear-gradient(to right, #1DB954 0%, #1DB954 ${volume}%, #535353 ${volume}%, #535353 100%)`;
-  
+
   if (audioElement) {
     audioElement.volume = volume / 100;
   }
-  
+
   if (ytPlayer && ytPlayer.setVolume) {
-    ytPlayer.setVolume(volume);
+    ytPlayer.setVolume(parseInt(volume));
   }
 });
 
 progressBar.addEventListener('click', (e) => {
-  if (!audioElement && !isYoutubeVideo) return;
-  
+  if (!currentSong) return;
+
   const rect = progressBar.getBoundingClientRect();
   const clickPosition = e.clientX - rect.left;
   const percent = clickPosition / rect.width;
-  
+
   if (percent < 0 || percent > 1) return;
-  
-  // Atualizar a interface primeiro para feedback imediato
+
   progressBarFill.style.width = (percent * 100) + "%";
-  
+
   if (isYoutubeVideo && ytPlayer) {
     const duration = ytPlayer.getDuration();
+    if (isNaN(duration) || duration <= 0) return;
     const newTime = percent * duration;
     ytPlayer.seekTo(newTime, true);
     currentTimeDisplay.textContent = formatTime(newTime);
@@ -529,77 +504,43 @@ progressBar.addEventListener('click', (e) => {
 });
 
 function initializePlaylist() {
-  currentPlaylist = Object.keys(musicas);
 }
 
 function showPlayerMessage(message, isError = false) {
   playerMessage.innerHTML = `
-    <div style="color: ${isError ? '#ff4444' : '#1DB954'}; 
-               padding: 10px;
-               background: ${isError ? 'rgba(255, 68, 68, 0.1)' : 'rgba(29, 185, 84, 0.1)'};
-               border-radius: 5px;
-               margin-top: 10px;">
+    <div style="color: ${isError ? '#ff4444' : '#1DB954'};
+                 padding: 10px;
+                 background: ${isError ? 'rgba(255, 68, 68, 0.1)' : 'rgba(29, 185, 84, 0.1)'};
+                 border-radius: 5px;
+                 margin-top: 10px;">
       ${message}
     </div>
   `;
+  setTimeout(() => {
+    playerMessage.innerHTML = '';
+  }, 3000);
 }
 
 function mostrarListaDeMusicasDisponiveis() {
-  songListContainer.innerHTML = '';
-  
-  Object.keys(musicas).forEach(nome => {
-    const songItem = document.createElement('div');
-    songItem.className = 'song-item';
-    songItem.textContent = nome;
-    songItem.addEventListener('click', () => {
-      tocarMusica(nome);
-      musicSearchInput.value = nome;
-    });
-    songListContainer.appendChild(songItem);
-  });
-  
+  songListContainer.innerHTML = '<p class="instruction-text">Use a busca para encontrar músicas ou selecione uma playlist.</p>';
   availableSongsList.classList.add('show');
 }
 
 showAvailableSongsBtn.addEventListener('click', () => {
-  if (availableSongsList.classList.contains('show')) {
-    availableSongsList.classList.remove('show');
-  } else {
+  if (!musicSearchInput.value.trim()) {
     mostrarListaDeMusicasDisponiveis();
+  } else {
+    showAvailableSongsFromSearch();
   }
 });
 
-function mostrarMusicasDisponiveis() {
-  mostrarListaDeMusicasDisponiveis();
-}
-
-window.tocarMusica = tocarMusica;
-
 searchMusicBtn.addEventListener('click', () => {
-  const nome = musicSearchInput.value.trim().toLowerCase();
-  if (nome) {
-    tocarMusica(nome);
-    
-    if (currentPlaylist.length === 0) {
-      initializePlaylist();
-      currentPlaylistIndex = currentPlaylist.indexOf(nome);
-      if (currentPlaylistIndex === -1) currentPlaylistIndex = 0;
-    }
-  }
+  showAvailableSongsFromSearch();
 });
 
 musicSearchInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
-    const nome = musicSearchInput.value.trim().toLowerCase();
-    if (nome) {
-      tocarMusica(nome);
-      
-      if (currentPlaylist.length === 0) {
-        initializePlaylist();
-        currentPlaylistIndex = currentPlaylist.indexOf(nome);
-        if (currentPlaylistIndex === -1) currentPlaylistIndex = 0;
-      }
-    }
+    showAvailableSongsFromSearch();
   }
 });
 
@@ -628,46 +569,41 @@ function updatePlaylistList() {
   const users = getUsers();
   const username = getCurrentUser();
   if (!username) return;
-  
+
   const user = users[username];
-  playlistList.innerHTML = "";
-  
+
   if (user.playlists && Array.isArray(user.playlists) && user.playlists.length > 0 && typeof user.playlists[0] === 'string') {
     const oldPlaylists = [...user.playlists];
     user.playlists = oldPlaylists.map(name => ({ name, songs: [] }));
     saveUsers(users);
   }
-  
+
   if (!user.playlists || !Array.isArray(user.playlists) || user.playlists.length === 0) {
     user.playlists = [{ name: 'Favoritas', songs: [] }];
     saveUsers(users);
   }
+
+  playlistList.innerHTML = "";
 
   user.playlists.forEach((playlist, index) => {
     const li = document.createElement("li");
     const playlistName = document.createElement("span");
     playlistName.textContent = playlist.name;
     playlistName.className = "playlist-name";
-    
+
     const songCount = document.createElement("span");
     songCount.textContent = `${playlist.songs.length} música${playlist.songs.length !== 1 ? 's' : ''}`;
     songCount.className = "song-count";
-    
+
     li.appendChild(playlistName);
     li.appendChild(songCount);
-    
+
     li.addEventListener('click', () => {
       showPlaylistSongs(index);
+      currentPlaylist = playlist.songs;
+      currentPlaylistIndex = 0;
     });
-    
-    li.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      
-      if (currentSong) {
-        addSongToPlaylist(currentSong, index);
-      }
-    });
-    
+
     playlistList.appendChild(li);
   });
 }
@@ -676,35 +612,40 @@ function showPlaylistSongs(playlistIndex) {
   const users = getUsers();
   const username = getCurrentUser();
   if (!username) return;
-  
+
   const user = users[username];
   const playlist = user.playlists[playlistIndex];
-  
+
   songListContainer.innerHTML = `
     <div class="playlist-header">
       <h3>${playlist.name}</h3>
       <p class="instruction-text">${playlist.songs.length > 0 ? 'Clique em uma música para tocar' : 'Nenhuma música adicionada'}</p>
     </div>
   `;
-  
+
   if (playlist.songs.length > 0) {
     const songsContainer = document.createElement('div');
     songsContainer.className = 'song-list';
-    
-    playlist.songs.forEach((songName) => {
+
+    playlist.songs.forEach((songDetails, index) => {
       const songItem = document.createElement('div');
       songItem.className = 'song-item';
-      songItem.textContent = songName;
+      songItem.textContent = songDetails.name;
+
+      songItem.dataset.videoId = songDetails.videoId;
+
       songItem.addEventListener('click', () => {
-        tocarMusica(songName);
-        musicSearchInput.value = songName;
+        tocarMusica(songDetails);
+        musicSearchInput.value = songDetails.name;
+        currentPlaylist = playlist.songs;
+        currentPlaylistIndex = index;
       });
       songsContainer.appendChild(songItem);
     });
-    
+
     songListContainer.appendChild(songsContainer);
   }
-  
+
   availableSongsList.classList.add('show');
 }
 
@@ -719,39 +660,40 @@ function createNewPlaylist(name) {
   const users = getUsers();
   const username = getCurrentUser();
   if (!username) return;
-  
+
   const user = users[username];
-  
-  if (user.playlists.some(pl => pl.name === name)) {
+
+  if (user.playlists.some(pl => pl.name.toLowerCase() === name.toLowerCase())) {
+    showErrorMessage(`Playlist "${name}" já existe.`, true);
     return;
   }
-  
+
   user.playlists.push({
     name: name,
     songs: []
   });
-  
+
   saveUsers(users);
-  
+  showErrorMessage(`Playlist "${name}" criada com sucesso!`, false);
   updatePlaylistList();
 }
 
-function addSongToPlaylist(songName, playlistIndex) {
+function addSongToPlaylist(songDetails, playlistIndex) {
   const users = getUsers();
   const username = getCurrentUser();
   if (!username) return;
-  
+
   const user = users[username];
-  
-  if (user.playlists[playlistIndex].songs.includes(songName)) {
+  const playlist = user.playlists[playlistIndex];
+
+  if (playlist.songs.some(s => s.videoId === songDetails.videoId)) {
+    showPlayerMessage(`"${songDetails.name}" já está na playlist "${playlist.name}".`, true);
     return;
   }
-  
-  user.playlists[playlistIndex].songs.push(songName);
-  
+
+  playlist.songs.push(songDetails);
   saveUsers(users);
-  
-  // Atualizar a interface
+  showPlayerMessage(`"${songDetails.name}" adicionada à playlist "${playlist.name}"!`, false);
   updatePlaylistList();
 }
 
@@ -835,13 +777,10 @@ function showApp() {
   userNameDisplay.textContent = username;
   updatePlaylistList();
   clearInputs();
-  
-  // Inicializar estado do botão de adicionar à playlist
+
   if (!currentSong) {
     addToPlaylistBtn.style.display = "none";
   }
-  
-  initializePlaylist();
 }
 
 logoutBtn.addEventListener("click", logout);
@@ -860,12 +799,12 @@ function toggleTheme() {
   const htmlElement = document.documentElement;
   const currentTheme = htmlElement.getAttribute('data-theme');
   const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  
+
   htmlElement.setAttribute('data-theme', newTheme);
-  
+
   const themeIcon = themeToggle.querySelector('.material-icons');
   themeIcon.textContent = newTheme === 'dark' ? 'light_mode' : 'dark_mode';
-  
+
   localStorage.setItem('theme', newTheme);
 }
 
@@ -878,19 +817,21 @@ window.addEventListener('DOMContentLoaded', () => {
     const themeIcon = themeToggle.querySelector('.material-icons');
     themeIcon.textContent = savedTheme === 'dark' ? 'light_mode' : 'dark_mode';
   }
-  
+
   const user = getCurrentUser();
   if (user) showApp();
+
+  createYoutubeContainer();
 });
 
-// Adicionar ao final do arquivo, antes do window.addEventListener
 addToPlaylistBtn.addEventListener('click', (e) => {
   e.stopPropagation();
-  
+
   if (!currentSong) {
+    showPlayerMessage("Selecione uma música primeiro para adicionar à playlist.", true);
     return;
   }
-  
+
   playlistDropdown.classList.toggle('show');
   updatePlaylistDropdown();
 });
@@ -899,44 +840,49 @@ function updatePlaylistDropdown() {
   const users = getUsers();
   const username = getCurrentUser();
   if (!username) return;
-  
+
   const user = users[username];
   playlistDropdownItems.innerHTML = '';
-  
+
+  if (!user.playlists || user.playlists.length === 0) {
+    playlistDropdownItems.innerHTML = '<div class="playlistDropdownItem disabled">Nenhuma playlist criada.</div>';
+    return;
+  }
+
   user.playlists.forEach((playlist, index) => {
     const playlistItem = document.createElement('div');
     playlistItem.className = 'playlistDropdownItem';
-    
+
     const icon = document.createElement('span');
     icon.className = 'material-icons';
     icon.textContent = 'playlist_add';
-    
+
     const text = document.createElement('span');
     text.textContent = playlist.name;
-    
+
     playlistItem.appendChild(icon);
     playlistItem.appendChild(text);
-    
-    // Verificar se a música já está na playlist
-    const songAlreadyInPlaylist = playlist.songs.includes(currentSong);
+
+    const songAlreadyInPlaylist = currentSong && playlist.songs.some(s => s.videoId === currentSong.videoId);
     if (songAlreadyInPlaylist) {
       icon.textContent = 'playlist_add_check';
     }
-    
+
     playlistItem.addEventListener('click', () => {
-      addSongToPlaylist(currentSong, index);
+      if (currentSong) {
+        addSongToPlaylist(currentSong, index);
+      }
       playlistDropdown.classList.remove('show');
     });
-    
+
     playlistDropdownItems.appendChild(playlistItem);
   });
 }
 
-// Fechar o dropdown ao clicar fora dele
 document.addEventListener('click', (e) => {
-  if (playlistDropdown.classList.contains('show') && 
-      !playlistDropdown.contains(e.target) && 
-      e.target !== addToPlaylistBtn) {
+  if (playlistDropdown.classList.contains('show') &&
+    !playlistDropdown.contains(e.target) &&
+    e.target !== addToPlaylistBtn) {
     playlistDropdown.classList.remove('show');
   }
 });
