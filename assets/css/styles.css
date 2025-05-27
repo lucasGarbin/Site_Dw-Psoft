@@ -191,7 +191,12 @@ body {
   flex-direction: column;
   justify-content: space-between;
   border-right: 1px solid var(--sidebar-border);
+  height: 100%;
+  padding-bottom: 120px;
 }
+
+
+
 
 #sidebar h3 {
   font-size: 20px;
@@ -917,6 +922,7 @@ html[data-theme="light"] .controlButton {
     padding: 15px;
     border-right: none;
     border-bottom: 1px solid var(--sidebar-border);
+
   }
 
   main {
@@ -928,7 +934,7 @@ html[data-theme="light"] .controlButton {
   body {
     padding: 5px;
   }
-/*  */
+
   .screen {
     padding: 18px 5px;
     max-width: 98vw;

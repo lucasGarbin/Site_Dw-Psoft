@@ -886,3 +886,28 @@ document.addEventListener('click', (e) => {
     playlistDropdown.classList.remove('show');
   }
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+  const createPlaylistBtn = document.getElementById("createPlaylistBtn");
+
+  createPlaylistBtn.addEventListener("click", () => {
+    const playlistName = prompt("Digite o nome da nova playlist:");
+    if (playlistName && playlistName.trim() !== "") {
+      adicionarPlaylist(playlistName.trim());
+    }
+  });
+});
+
+function adicionarPlaylist(nome) {
+  const playlistList = document.getElementById("playlistList");
+
+  const novaLi = document.createElement("li");
+  novaLi.textContent = nome;
+
+  const contador = document.createElement("span");
+  contador.className = "song-count";
+  contador.textContent = "0 músicas";
+
+  novaLi.appendChild(contador);
+  playlistList.appendChild(novaLi);
+}
