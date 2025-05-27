@@ -998,3 +998,7 @@ html[data-theme="light"] .controlButton {
     gap: 8px;
   }
 }
+
+#musicSearchTitle {
+  text-align: center;
+}
