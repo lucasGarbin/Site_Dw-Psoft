@@ -506,6 +506,7 @@ progressBar.addEventListener('click', (e) => {
 function initializePlaylist() {
 }
 
+//espero que nao seja feio fazer isso, amem!
 function showPlayerMessage(message, isError = false) {
   playerMessage.innerHTML = `
     <div style="color: ${isError ? '#ff4444' : '#1DB954'};
