@@ -649,7 +649,6 @@ function showPlaylistSongs(playlistIndex) {
   availableSongsList.classList.add('show');
 }
 
-
 function createNewPlaylist(name) {
   const users = getUsers();
   const username = getCurrentUser();
