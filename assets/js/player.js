@@ -65,13 +65,13 @@ function createYoutubeContainer() {
     document.getElementById('playerContainer').appendChild(youtubeContainer);
 
     const tag = document.createElement('script');
-    tag.src = 'https://www.youtube.com/iframe_api'; 
+    tag.src = 'https://www.youtube.com/iframe_api';
     const firstScriptTag = document.getElementsByTagName('script')[0];
     firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
   }
 }
 
-window.onYouTubeIframeAPIReady = function() {
+window.onYouTubeIframeAPIReady = function () {
   console.log('YouTube API ready');
   youtubeAPIReady = true;
 };
@@ -83,9 +83,9 @@ async function searchMusic(query) {
     const data = await response.json();
 
     if (data.error) {
-        console.error('Erro da API do YouTube:', data.error.message);
-        showErrorMessage(`Erro da API: ${data.error.message}. Verifique sua chave ou limites de uso.`, true);
-        return [];
+      console.error('Erro da API do YouTube:', data.error.message);
+      showErrorMessage(`Erro da API: ${data.error.message}. Verifique sua chave ou limites de uso.`, true);
+      return [];
     }
 
     return data.items.map(item => ({
@@ -165,7 +165,6 @@ async function showAvailableSongsFromSearch() {
         e.preventDefault();
         currentSong = { name: song.title, videoId: song.videoId };
         addToPlaylistBtn.style.display = "flex";
-        playlistDropdown.classList.add('show');
         updatePlaylistDropdown();
       });
 
@@ -650,12 +649,6 @@ function showPlaylistSongs(playlistIndex) {
   availableSongsList.classList.add('show');
 }
 
-createPlaylistBtn.addEventListener('click', () => {
-  const playlistName = prompt('Digite o nome da nova playlist:');
-  if (playlistName && playlistName.trim() !== '') {
-    createNewPlaylist(playlistName.trim());
-  }
-});
 
 function createNewPlaylist(name) {
   const users = getUsers();

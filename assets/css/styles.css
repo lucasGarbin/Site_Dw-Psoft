@@ -403,7 +403,7 @@ main button.secondary-button:hover {
   padding: 10px;
   background-color: rgba(255, 193, 7, 0.2);
   border-radius: 8px;
-  color: #ffb700;
+  color: #ff0000;
   font-size: 14px;
 }
 
@@ -512,7 +512,7 @@ iframe {
 }
 
 .mainControl:hover {
-  background-color: #1ED760;
+  background-color: #0c6dce;
   transform: scale(1.1);
 }
 
@@ -559,7 +559,7 @@ iframe {
 }
 
 .progressBar:hover .progressBarFill {
-  background-color: #1ED760;
+  background-color: #147ce4;
 }
 
 .progressBar:hover::after {
