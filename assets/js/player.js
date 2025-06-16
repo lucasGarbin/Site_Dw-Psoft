@@ -466,7 +466,7 @@ repeatBtn.addEventListener('click', () => {
 
 volumeSlider.addEventListener('input', (e) => {
   const volume = e.target.value;
-  e.target.style.background = `linear-gradient(to right, #1DB954 0%, #1DB954 ${volume}%, #535353 ${volume}%, #535353 100%)`;
+  e.target.style.background = `linear-gradient(to right, #1C86EE 0%, #1E90FF ${volume}%, #535353 ${volume}%, #535353 100%)`;
 
   if (audioElement) {
     audioElement.volume = volume / 100;
@@ -526,13 +526,13 @@ function mostrarListaDeMusicasDisponiveis() {
   availableSongsList.classList.add('show');
 }
 
-showAvailableSongsBtn.addEventListener('click', () => {
-  if (!musicSearchInput.value.trim()) {
-    mostrarListaDeMusicasDisponiveis();
-  } else {
-    showAvailableSongsFromSearch();
-  }
-});
+// showAvailableSongsBtn.addEventListener('click', () => {
+//   if (!musicSearchInput.value.trim()) {
+//     mostrarListaDeMusicasDisponiveis();
+//   } else {
+//     showAvailableSongsFromSearch();
+//   }
+// });
 
 searchMusicBtn.addEventListener('click', () => {
   showAvailableSongsFromSearch();

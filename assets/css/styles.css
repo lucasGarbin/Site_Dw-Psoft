@@ -254,7 +254,6 @@ body {
 #playlistList li:hover {
   background: var(--primary-color);
   color: #fff;
-  transform: translateX(5px);
 }
 
 #playlistList li:hover .song-count {
