@@ -19,7 +19,6 @@ const playerMessage = document.getElementById("playerMessage");
 const searchMusicBtn = document.getElementById("searchMusicBtn");
 const musicSearchInput = document.getElementById("musicSearchInput");
 const currentSongTitle = document.getElementById("currentSongTitle");
-const showAvailableSongsBtn = document.getElementById("showAvailableSongsBtn");
 const availableSongsList = document.getElementById("availableSongsList");
 const songListContainer = document.getElementById("songListContainer");
 const createPlaylistBtn = document.getElementById("createPlaylistBtn");
@@ -466,7 +465,7 @@ repeatBtn.addEventListener('click', () => {
 
 volumeSlider.addEventListener('input', (e) => {
   const volume = e.target.value;
-  e.target.style.background = `linear-gradient(to right, #1C86EE 0%, #1E90FF ${volume}%, #535353 ${volume}%, #535353 100%)`;
+  e.target.style.background = `linear-gradient(to right,rgb(112, 184, 255) 0%,rgb(0, 110, 255) ${volume}%, #535353 ${volume}%, #535353 100%)`;
 
   if (audioElement) {
     audioElement.volume = volume / 100;
@@ -525,14 +524,6 @@ function mostrarListaDeMusicasDisponiveis() {
   songListContainer.innerHTML = '<p class="instruction-text">Use a busca para encontrar músicas ou selecione uma playlist.</p>';
   availableSongsList.classList.add('show');
 }
-
-// showAvailableSongsBtn.addEventListener('click', () => {
-//   if (!musicSearchInput.value.trim()) {
-//     mostrarListaDeMusicasDisponiveis();
-//   } else {
-//     showAvailableSongsFromSearch();
-//   }
-// });
 
 searchMusicBtn.addEventListener('click', () => {
   showAvailableSongsFromSearch();

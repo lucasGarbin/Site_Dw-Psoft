@@ -573,6 +573,10 @@ iframe {
   transform: translateY(-50%);
 }
 
+#musicSearchInput{
+  margin-left: 130px;
+}
+
 #currentTime,
 #duration {
   font-size: 12px;
