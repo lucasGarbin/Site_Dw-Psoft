@@ -465,7 +465,7 @@ repeatBtn.addEventListener('click', () => {
 
 volumeSlider.addEventListener('input', (e) => {
   const volume = e.target.value;
-  e.target.style.background = `linear-gradient(to right,rgb(112, 184, 255) 0%,rgb(0, 110, 255) ${volume}%, #535353 ${volume}%, #535353 100%)`;
+  e.target.style.background = `linear-gradient(to right,rgb(125, 190, 255) 0%,rgb(0, 110, 255) ${volume}%, #535353 ${volume}%, #535353 100%)`;
 
   if (audioElement) {
     audioElement.volume = volume / 100;
