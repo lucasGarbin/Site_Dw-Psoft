@@ -50,7 +50,14 @@ html[data-theme="light"] {
 }
 
 body {
-  background: var(--background);
+  background-color: #000000;
+  background-image: repeating-linear-gradient(
+    55deg,   /* e a angulacao das linhas */
+    #000000 0px,
+    #000000 500px,
+    #0c0c0c 200px,
+    #0c0c0c 1000px
+  );
   color: var(--text);
   min-height: 100vh;
   display: flex;
@@ -447,7 +454,7 @@ iframe {
 #customPlayerControls {
   width: 100%;
   padding: 18px 20px;
-  background: var(--controls-bg);
+  background: rgb(17, 17, 17);
   border-radius: 0;
   margin-top: 0;
   display: flex;
@@ -456,7 +463,6 @@ iframe {
   bottom: 0;
   left: 0;
   z-index: 1000;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .playerControlsCenter {
